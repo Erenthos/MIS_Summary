@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procurement Process Tracker</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f4f4;
+            padding: 5px;
+        }
+
+        .container {
+            width: 100%;
+            margin: 0;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            z-index: 10;
+        }
+
+        table.dataTable tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        table.dataTable tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table.dataTable tbody tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        td:nth-child(10),
+        th:nth-child(10) {
+            width: 900px;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+
+        #summaryContainer {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1>Avaada Green Projects Status Tracker</h1>
+
+        <!-- Project Selection Dropdown -->
+        <div class="form-group">
+            <label for="projectSelect">Select Project:</label>
+            <select id="projectSelect" class="form-control">
+                <option value="Sheet1">Green Ammonia Project</option>
+                <option value="Sheet2">Green Methanol Derivatives Project</option>
+            </select>
+        </div>
+
+        <button id="fetchDataButton" class="btn btn-primary" onclick="fetchData()">Load Data</button>
+        <button id="generateSummaryButton" class="btn btn-secondary" onclick="generateSummary()">Generate Summary</button>
+
+        <table id="procurementTable" class="display table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>SN</th>
+                    <th>Package Name</th>
+                    <th>Scope Release Date</th>
+                    <th>RFP Floated Date</th>
+                    <th>Target LOI Date</th>
+                    <th>Recommended/RFP Floated Vendors</th>
+                    <th>Response Received from Vendor</th>
+                    <th>Technical Cleared Vendors</th>
+                    <th>Commercial Proposal Status</th>
+                    <th>Current Status</th>
+                    <th>Pending with Stakeholder</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody id="procurementData">
+                <!-- Dynamic data will be inserted here -->
+            </tbody>
+        </table>
+
+        <!-- Summary section -->
+        <div id="summaryContainer">
+            <h3>Project Summary</h3>
+            <p id="projectSummary">Summary will be displayed here...</p>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+
+    <script>
+        const SPREADSHEET_ID = '1L8-C9GtZ8Pc-HO6AZkj2V8LuecZaxBEuRNFgDM3K1GY'; // Replace with your actual Spreadsheet ID
+        const API_KEY = 'AIzaSyAWS6TjiAXcMcv8ZbNAEtigrFgb_KPCN-o'; // Replace with your Google API Key
+
+        let dataTable;
+        let projectData = []; // To store the project data for summary
+
+        function fetchData() {
+            const sheetName = document.getElementById('projectSelect').value;
+            const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}?key=${API_KEY}`;
+
+            if ($.fn.DataTable.isDataTable('#procurementTable')) {
+                $('#procurementTable').DataTable().clear().destroy();
+            }
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    const tableBody = document.getElementById('procurementData');
+                    const rows = data.values;
+
+                    projectData = rows; // Store data for summary generation
+
+                    if (rows) {
+                        let tableRows = '';
+                        rows.slice(1).forEach((row) => {
+                            const recommendedVendors = row[5] ? row[5].split('\n').map(vendor => `<div>${vendor.replace(/^\d+\.\s*/, '').trim()}</div>`).join('') : '';
+                            const responseReceived = row[6] ? row[6].split('\n').map(vendor => `<div>${vendor.replace(/^\d+\.\s*/, '').trim()}</div>`).join('') : '';
+                            const technicalCleared = row[7] ? row[7].split('\n').map(vendor => `<div>${vendor.replace(/^\d+\.\s*/, '').trim()}</div>`).join('') : '';
+                            const commercialProposalStatus = row[8] ? row[8].split('\n').map(vendor => `<div>${vendor.replace(/^\d+\.\s*/, '').trim()}</div>`).join('') : '';
+
+                            tableRows += `
+                                <tr>
+                                    <td>${row[0] || ''}</td>
+                                    <td>${row[1] || ''}</td>
+                                    <td>${row[2] || ''}</td>
+                                    <td>${row[3] || ''}</td>
+                                    <td>${row[4] || ''}</td>
+                                    <td>${recommendedVendors}</td>
+                                    <td>${responseReceived}</td>
+                                    <td>${technicalCleared}</td>
+                                    <td>${commercialProposalStatus}</td>
+                                    <td>${row[9] || ''}</td>
+                                    <td>${row[10] || ''}</td>
+                                    <td>${row[11] || ''}</td>
+                                </tr>`;
+                        });
+                        tableBody.innerHTML = tableRows;
+
+                        dataTable = $('#procurementTable').DataTable({
+                            responsive: true,
+                            autoWidth: false
+                        });
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="13">No data available</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        }
+
+        function generateSummary() {
+            const summaryContainer = document.getElementById('projectSummary');
+            if (projectData.length === 0) {
+                summaryContainer.textContent = 'No data available to generate a summary.';
+                return;
+            }
+
+            const totalPackages = projectData.length - 1; // Minus 1 to skip the header row
+            const pendingPackages = projectData.slice(1).filter(row => row[9].toLowerCase().includes("pending")).length;
+            const completedPackages = projectData.slice(1).filter(row => row[9].toLowerCase().includes("completed")).length;
+
+            let vendorsInvolved = new Set();
+            projectData.slice(1).forEach(row => {
+                if (row[5]) row[5].split('\n').forEach(vendor => vendorsInvolved.add(vendor.trim()));
+            });
+
+            const totalVendors = vendorsInvolved.size;
+            const projectName = document.getElementById('projectSelect').value === 'Sheet1' ? 'Green Ammonia Project' : 'Green Methanol Derivatives Project';
+
+            const summary = `
+                The ${projectName} involves a total of ${totalPackages} procurement packages.
+                Out of these, ${completedPackages} have been completed and ${pendingPackages} are still pending.
+                The project has engaged ${totalVendors} unique vendors so far.
+            `;
+
+            summaryContainer.textContent = summary;
+        }
+    </script>
+</body>
+</html>
